@@ -1,3 +1,6 @@
 *.tmp
+
 /KauppamatkustajanOngelma/.gradle/
 /KauppamatkustajanOngelma/build/
+
+gradle.properties
