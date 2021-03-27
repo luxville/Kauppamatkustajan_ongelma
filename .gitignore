@@ -1,4 +1,3 @@
-/.gradle
-/build
-
 *.tmp
+/KauppamatkustajanOngelma/.gradle/
+/KauppamatkustajanOngelma/build/
