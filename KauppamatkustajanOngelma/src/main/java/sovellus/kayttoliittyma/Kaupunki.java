@@ -11,11 +11,11 @@ import javafx.scene.shape.Circle;
  *
  * @author luxville
  */
-public class Piste {
+public class Kaupunki {
     private Circle piste;
     private int x, y;
 
-    public Piste(int x, int y) {
+    public Kaupunki(int x, int y) {
         this.piste = new Circle(x, y, 5);
         this.x = x;
         this.y = y;

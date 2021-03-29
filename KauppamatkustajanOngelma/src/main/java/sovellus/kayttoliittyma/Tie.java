@@ -9,11 +9,11 @@ package sovellus.kayttoliittyma;
  *
  * @author luxville
  */
-public class Viiva {
+public class Tie {
     private int alkuX, alkuY, loppuX, loppuY;
     private double pituus;
 
-    public Viiva(int alkuX, int alkuY, int loppuX, int loppuY, double pituus) {
+    public Tie(int alkuX, int alkuY, int loppuX, int loppuY, double pituus) {
         this.alkuX = alkuX;
         this.alkuY = alkuY;
         this.loppuX = loppuX;
