@@ -5,10 +5,12 @@
  */
 package sovellus.kayttoliittyma;
 
+import java.util.Random;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
@@ -35,11 +37,17 @@ public class Sovellus extends Application {
     Button lopetusPainike;
     Button nollausPainike;
     Button ohjePainike;
-    TextField pisteidenLkm;
+    Button palautaAlkutilannePainike;
+    Button piirraReittiJarjestyksessaPainike;
+    Pane kartta;
+    TextField kaupunkienLkm;
     VBox valikko;
-    
+
+    int[] xKoordinaatit, yKoordinaatit;
+
     private final int LEVEYS = 1600;
     private final int KORKEUS = 900;
+    private final int X = 8;
 
     @Override
     public void start(Stage ikkuna) throws Exception {
@@ -48,35 +56,21 @@ public class Sovellus extends Application {
         valikko = new VBox();
         valikko.setSpacing(2);
 
-        alustaValikko();
-        System.out.println("3");
-        valikko.getChildren().add(pisteidenLkm);
-        System.out.println("3,5");
-        valikko.getChildren().addAll(arvontaPainike,
-                brutePainike, ahnePainike, christofidesPainike,
-                keskeytysPainike, nollausPainike, ohjePainike, lopetusPainike);
-        System.out.println("4");
-        asettelu.setLeft(valikko);
-
-        Pane kartta = new Pane();
+        kartta = new Pane();
         kartta.setPrefSize(LEVEYS, KORKEUS);
         kartta.setStyle("-fx-border-color: black; -fx-background-color: lightgrey");
 
-        Circle a = new Circle(30, 150, 9);
-        Circle b = new Circle(530, 150, 7);
-        Circle c = new Circle(30, 350, 8);
-        Circle d = new Circle(530, 350, 6);
-        Circle e = new Circle(830, 550, 5);
+        alustaValikko();
+
+        asettelu.setLeft(valikko);
+
+        Circle a = new Circle(30, 150, X);
+        Circle b = new Circle(530, 150, X);
+        Circle c = new Circle(30, 350, X);
+        Circle d = new Circle(530, 350, X);
+        Circle e = new Circle(830, 550, X);
 
         kartta.getChildren().addAll(a, b, c, d, e);
-
-        Line ad = new Line();
-        ad.setStartX(a.getCenterX());
-        ad.setStartY(a.getCenterY());
-        ad.setEndX(d.getCenterX());
-        ad.setEndY(d.getCenterY());
-
-        kartta.getChildren().add(ad);
 
         Path reitti = new Path();
         reitti.setStyle("-fx-stroke: red; -fx-stroke-width: 4");
@@ -91,7 +85,6 @@ public class Sovellus extends Application {
 
         asettelu.setRight(kartta);
 
-        //Scene visualisoisoija = new Scene(ruutu);
         ikkuna.setTitle("Kauppamatkustajan ongelman visualisoija");
         Scene nakyma = new Scene(asettelu);
 
@@ -100,31 +93,39 @@ public class Sovellus extends Application {
     }
 
     private void alustaValikko() {
-        pisteidenLkm = new TextField("0");
-        String lkm = pisteidenLkm.getText();
-        alustaArvontaPainike(lkm);
+        kaupunkienLkm = new TextField();
+        alustaArvontaPainike();
+        alustaPiirraReittiJarjestyksessaPainike();
         alustaBrutePainike();
         alustaAhnePainike();
         alustaChristofidesPainike();
+        // Nopeussäätö visualisoinnin etenemiselle
         alustaKeskeytysPainike();
         alustaNollausPainike();
-        // Nopeussäätö visualisoinnin etenemiselle
+        alustaPalautaAlkutilannePainike();
         alustaOhjePainike();
         alustaLopetusPainike();
+        valikko.getChildren().addAll(new Label("Kaupunkeja"), kaupunkienLkm,
+                arvontaPainike, piirraReittiJarjestyksessaPainike, brutePainike, ahnePainike, christofidesPainike,
+                keskeytysPainike, palautaAlkutilannePainike, nollausPainike,
+                ohjePainike, lopetusPainike);
     }
 
-    private Button alustaArvontaPainike(String lkm) {
+    private Button alustaArvontaPainike() {
         arvontaPainike = new Button("Luo kaupungit");
-        if (!lkm.isBlank() && onNumero(lkm)) {
-            arvontaPainike.setOnAction((event) -> {
+        arvontaPainike.setOnAction((event) -> {
+            String lkm = kaupunkienLkm.getText();
+            if (!lkm.isBlank() && onNumero(lkm)) {
                 int kaupunkeja = (int) Double.parseDouble(lkm);
                 if (kaupunkeja > 1) {
+                    xKoordinaatit = new int[kaupunkeja];
+                    yKoordinaatit = new int[kaupunkeja];
                     for (int i = 0; i < kaupunkeja; i++) {
-                        luoKaupunki();
+                        luoKaupunki(i);
                     }
                 }
-            });
-        }
+            }
+        });
         return arvontaPainike;
     }
 
@@ -155,9 +156,24 @@ public class Sovellus extends Application {
         return keskeytysPainike;
     }
 
-    private Button alustaNollausPainike() {
-        nollausPainike = new Button("Aloita alusta");
+    private Button alustaLopetusPainike() {
+        lopetusPainike = new Button("Sulje sovellus");
+        //lopetusPainike.setStyle("-fx-background-color: red");
+        lopetusPainike.setOnAction((event) -> {
+            Platform.exit();
+            System.exit(0);
+        });
+        return lopetusPainike;
+    }
 
+    private Button alustaNollausPainike() {
+        nollausPainike = new Button("Tyhjennä");
+
+        nollausPainike.setOnAction((event) -> {
+            kartta.getChildren().clear();
+            xKoordinaatit = null;
+            yKoordinaatit = null;
+        });
         return nollausPainike;
     }
 
@@ -167,14 +183,27 @@ public class Sovellus extends Application {
         return ohjePainike;
     }
 
-    private Button alustaLopetusPainike() {
-        lopetusPainike = new Button("Sulje sovellus");
-        lopetusPainike.setStyle("-fx-background-color: red");
-        lopetusPainike.setOnAction((event) -> {
-            Platform.exit();
-            System.exit(0);
+    private Button alustaPalautaAlkutilannePainike() {
+        palautaAlkutilannePainike = new Button("Palauta alkutila");
+        palautaAlkutilannePainike.setOnAction((event) -> {
+            kartta.getChildren().clear();
+            palautaKaupungit();
         });
-        return lopetusPainike;
+        return palautaAlkutilannePainike;
+    }
+
+    private Button alustaPiirraReittiJarjestyksessaPainike() {
+        piirraReittiJarjestyksessaPainike = new Button("Piirrä reitti");
+        piirraReittiJarjestyksessaPainike.setOnAction((event) -> {
+            for (int i = 0; i < xKoordinaatit.length; i++) {
+                int loppu = i + 1;
+                if (i + 1 == xKoordinaatit.length) {
+                    loppu = 0;
+                }
+                piirraTie(i, loppu);
+            }
+        });
+        return piirraReittiJarjestyksessaPainike;
     }
 
     private boolean onNumero(String lkm) {
@@ -186,7 +215,34 @@ public class Sovellus extends Application {
         }
     }
 
-    private void luoKaupunki() {
-        
+    private void luoKaupunki(int i) {
+        Random random = new Random();
+        int x = random.nextInt(LEVEYS);
+        int y = random.nextInt(KORKEUS);
+        System.out.println(x + " ja " + y);
+        xKoordinaatit[i] = x;
+        yKoordinaatit[i] = y;
+        Circle kaupunki = new Circle(x, y, X);
+        kartta.getChildren().add(kaupunki);
+    }
+
+    private void palautaKaupungit() {
+        for (int i = 0; i < xKoordinaatit.length; i++) {
+            Circle kaupunki = new Circle(xKoordinaatit[i], yKoordinaatit[i], X);
+            System.out.println(xKoordinaatit[i] + " ja " + yKoordinaatit[i]);
+            kartta.getChildren().add(kaupunki);
+        }
+    }
+
+    private void piirraTie(int alku, int loppu) {
+        Circle lahto = new Circle(xKoordinaatit[alku], yKoordinaatit[alku], X);
+        Circle kohde = new Circle(xKoordinaatit[loppu], yKoordinaatit[loppu], X);
+        Line tie = new Line();
+        tie.setStartX(lahto.getCenterX());
+        tie.setStartY(lahto.getCenterY());
+        tie.setEndX(kohde.getCenterX());
+        tie.setEndY(kohde.getCenterY());
+
+        kartta.getChildren().add(tie);
     }
 }
