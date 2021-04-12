@@ -5,22 +5,24 @@
  */
 package sovellus.kayttoliittyma;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
-import javafx.scene.shape.LineTo;
-import javafx.scene.shape.MoveTo;
-import javafx.scene.shape.Path;
 import javafx.stage.Stage;
+import sovellus.algoritmit.*;
+import sovellus.logiikka.*;
 
 /**
  *
@@ -28,6 +30,7 @@ import javafx.stage.Stage;
  */
 public class Sovellus extends Application {
 
+    ArrayList<Integer> reitti = new ArrayList<>();
     BorderPane asettelu;
     Button ahnePainike;
     Button arvontaPainike;
@@ -39,14 +42,22 @@ public class Sovellus extends Application {
     Button ohjePainike;
     Button palautaAlkutilannePainike;
     Button piirraReittiJarjestyksessaPainike;
+    double pituus;
     Pane kartta;
+    TextArea siirtymat;
     TextField kaupunkienLkm;
+    TextField lyhinReitti;
+    TextField reitinPituus;
+    VBox tulokset;
     VBox valikko;
 
     int[] xKoordinaatit, yKoordinaatit;
+    double[] valimatkat;
+    double[][] etaisyysmatriisi;
 
-    private final int LEVEYS = 1600;
-    private final int KORKEUS = 900;
+    private final int LEVEYS = 1500;
+    private final int KORKEUS = 800;
+    private final int PALJON = Integer.MAX_VALUE;
     private final int X = 8;
 
     @Override
@@ -56,33 +67,19 @@ public class Sovellus extends Application {
         valikko = new VBox();
         valikko.setSpacing(2);
 
+        tulokset = new VBox();
+        tulokset.setSpacing(2);
+
         kartta = new Pane();
         kartta.setPrefSize(LEVEYS, KORKEUS);
         kartta.setStyle("-fx-border-color: black; -fx-background-color: lightgrey");
 
         alustaValikko();
+        alustaTulokset();
 
         asettelu.setLeft(valikko);
-
-        Circle a = new Circle(30, 150, X);
-        Circle b = new Circle(530, 150, X);
-        Circle c = new Circle(30, 350, X);
-        Circle d = new Circle(530, 350, X);
-        Circle e = new Circle(830, 550, X);
-
-        kartta.getChildren().addAll(a, b, c, d, e);
-
-        Path reitti = new Path();
-        reitti.setStyle("-fx-stroke: red; -fx-stroke-width: 4");
-        reitti.getElements().add(new MoveTo(a.getCenterX(), a.getCenterY()));
-        reitti.getElements().add(new LineTo(b.getCenterX(), b.getCenterY()));
-        reitti.getElements().add(new LineTo(d.getCenterX(), d.getCenterY()));
-        reitti.getElements().add(new LineTo(e.getCenterX(), e.getCenterY()));
-        reitti.getElements().add(new LineTo(c.getCenterX(), c.getCenterY()));
-        reitti.getElements().add(new LineTo(a.getCenterX(), a.getCenterY()));
-
-        kartta.getChildren().add(reitti);
-
+        asettelu.setBottom(tulokset);
+        
         asettelu.setRight(kartta);
 
         ikkuna.setTitle("Kauppamatkustajan ongelman visualisoija");
@@ -97,7 +94,7 @@ public class Sovellus extends Application {
         alustaArvontaPainike();
         alustaPiirraReittiJarjestyksessaPainike();
         alustaBrutePainike();
-        alustaAhnePainike();
+        alustaLahinNaapuriPainike();
         alustaChristofidesPainike();
         // Nopeussäätö visualisoinnin etenemiselle
         alustaKeskeytysPainike();
@@ -106,7 +103,8 @@ public class Sovellus extends Application {
         alustaOhjePainike();
         alustaLopetusPainike();
         valikko.getChildren().addAll(new Label("Kaupunkeja"), kaupunkienLkm,
-                arvontaPainike, piirraReittiJarjestyksessaPainike, brutePainike, ahnePainike, christofidesPainike,
+                arvontaPainike, piirraReittiJarjestyksessaPainike, brutePainike,
+                ahnePainike, christofidesPainike, //tulokset,
                 keskeytysPainike, palautaAlkutilannePainike, nollausPainike,
                 ohjePainike, lopetusPainike);
     }
@@ -115,14 +113,19 @@ public class Sovellus extends Application {
         arvontaPainike = new Button("Luo kaupungit");
         arvontaPainike.setOnAction((event) -> {
             String lkm = kaupunkienLkm.getText();
-            if (!lkm.isBlank() && onNumero(lkm)) {
+            if (!lkm.strip().isBlank() && onNumero(lkm)) {
                 int kaupunkeja = (int) Double.parseDouble(lkm);
                 if (kaupunkeja > 1) {
                     xKoordinaatit = new int[kaupunkeja];
                     yKoordinaatit = new int[kaupunkeja];
+                    valimatkat = new double[kaupunkeja];
+                    etaisyysmatriisi = new double[kaupunkeja][kaupunkeja];
+                    reitti = new ArrayList();
+                    pituus = PALJON;
                     for (int i = 0; i < kaupunkeja; i++) {
                         luoKaupunki(i);
                     }
+                    luoEtaisyysMatriisi();
                 }
             }
         });
@@ -132,11 +135,18 @@ public class Sovellus extends Application {
     private Button alustaBrutePainike() {
         brutePainike = new Button("Brute force");
         brutePainike.setStyle("-fx-background-color: blue");
+        BruteForce brute = new BruteForce();
+        double lyhinReitinPituus = Double.MAX_VALUE;
+        
+        brutePainike.setOnAction((event) -> {
+            double nykyinenLyhinPituus = brute.bruteForceKauppamatkustaja(etaisyysmatriisi, 0);
+            nykyinenLyhinPituus = Math.min(lyhinReitinPituus, nykyinenLyhinPituus);
+        });
 
         return brutePainike;
     }
 
-    private Button alustaAhnePainike() {
+    private Button alustaLahinNaapuriPainike() {
         ahnePainike = new Button("Lähin naapuri");
         ahnePainike.setStyle("-fx-background-color: blue");
 
@@ -173,6 +183,12 @@ public class Sovellus extends Application {
             kartta.getChildren().clear();
             xKoordinaatit = null;
             yKoordinaatit = null;
+            valimatkat = null;
+            etaisyysmatriisi = null;
+            reitti = null;
+            lyhinReitti.setText("");
+            siirtymat.setText("");
+            reitinPituus.setText("");
         });
         return nollausPainike;
     }
@@ -195,13 +211,24 @@ public class Sovellus extends Application {
     private Button alustaPiirraReittiJarjestyksessaPainike() {
         piirraReittiJarjestyksessaPainike = new Button("Piirrä reitti");
         piirraReittiJarjestyksessaPainike.setOnAction((event) -> {
+            reitti.add(0);
             for (int i = 0; i < xKoordinaatit.length; i++) {
                 int loppu = i + 1;
-                if (i + 1 == xKoordinaatit.length) {
+                if (loppu == xKoordinaatit.length) {
                     loppu = 0;
                 }
+                valimatkat[i] = etaisyysmatriisi[i][loppu];
+                reitti.add(loppu);
                 piirraTie(i, loppu);
             }
+            laskeReitinPituus();
+            System.out.println(Arrays.toString(valimatkat));
+            System.out.println(reitti.toString());
+            for (int i = 0; i < xKoordinaatit.length; i++) {
+                System.out.println(Arrays.toString(etaisyysmatriisi[i]));
+            }
+            lyhinReitti.setText(reitti.toString());
+            siirtymat.setText(Arrays.toString(valimatkat));
         });
         return piirraReittiJarjestyksessaPainike;
     }
@@ -244,5 +271,52 @@ public class Sovellus extends Application {
         tie.setEndY(kohde.getCenterY());
 
         kartta.getChildren().add(tie);
+    }
+
+    private void alustaTulokset() {
+        tulokset.getChildren().add(new Label("Reitin pituus:"));
+        pituus = laskeReitinPituus();
+        reitinPituus = new TextField(Double.toString(pituus));
+        tulokset.getChildren().add(reitinPituus);
+        tulokset.getChildren().add(new Label("Lyhin reitti:"));
+        lyhinReitti = new TextField("");
+        tulokset.getChildren().add(lyhinReitti);
+        tulokset.getChildren().add(new Label("Välimatkat:"));
+        siirtymat = new TextArea("");
+        siirtymat.setPrefHeight(12);
+        tulokset.getChildren().add(siirtymat);
+    }
+
+    private double laskeEtaisyys(int alku, int loppu) {
+        int xMuutos = xKoordinaatit[loppu] - xKoordinaatit[alku];
+        int yMuutos = yKoordinaatit[loppu] - yKoordinaatit[alku];
+        double etaisyys = Math.sqrt(xMuutos * xMuutos + yMuutos * yMuutos);
+        return etaisyys;
+    }
+
+    private double laskeReitinPituus() {
+        if (valimatkat == null || valimatkat.length == 0) {
+            return pituus;
+        }
+        double uusiPituus = 0;
+        for (int i = 0; i < valimatkat.length; i++) {
+            uusiPituus += valimatkat[i];
+        }
+        pituus = Math.min(pituus, uusiPituus);
+        reitinPituus.setText(Double.toString(pituus));
+        return pituus;
+    }
+
+    void luoEtaisyysMatriisi() {
+        for (int i = 0; i < xKoordinaatit.length; i++) {
+            for (int j = 0; j < xKoordinaatit.length; j++) {
+                if (i == j) {
+                    etaisyysmatriisi[i][j] = 0;
+                    continue;
+                }
+                etaisyysmatriisi[i][j] = laskeEtaisyys(i, j);
+                System.out.println(laskeEtaisyys(i, j));
+            }
+        }
     }
 }
