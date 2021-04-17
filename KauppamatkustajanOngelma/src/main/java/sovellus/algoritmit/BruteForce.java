@@ -15,9 +15,11 @@ public class BruteForce {
 
     int kaupunkeja;
     double[][] etaisyysmatriisi;
+    ArrayList<Integer> reitti, lyhinReitti;
 
     public double bruteForceKauppamatkustaja(double[][] etaisyysmatriisi, int aloitus) {
         ArrayList<Integer> kaupungit = new ArrayList<>();
+        kaupungit.add(aloitus);
         kaupunkeja = etaisyysmatriisi.length;
 
         for (int i = 0; i < kaupunkeja; i++) {
@@ -25,21 +27,45 @@ public class BruteForce {
                 kaupungit.add(i);
             }
         }
+        System.out.println("Kaupunkeja ovat " + kaupungit + ", ensimmäisenä on " + aloitus);
         double lyhinReitinPituus = Double.MAX_VALUE;
+        lyhinReitti = new ArrayList<>();
 
         while (loytyyUusiReitti(kaupungit)) {
+            boolean samaKahdesti = false;
+            reitti = new ArrayList<>();
             double nykyisenReitinPituus = 0;
+            boolean[] mukana = new boolean[kaupunkeja];
+            mukana[aloitus] = true;
             int kaupunki = aloitus;
             for (int i = 0; i < kaupungit.size(); i++) {
+                if (i == aloitus) continue;
+                reitti.add(kaupunki);
+                if (mukana[i]) {
+                    samaKahdesti = true;
+                    break;
+                }
+                mukana[kaupunki] = true;
                 nykyisenReitinPituus += etaisyysmatriisi[kaupunki][kaupungit.get(i)];
                 kaupunki = kaupungit.get(i);
             }
+            if (samaKahdesti) {
+                System.out.println("Löytyi virheellinen reitti " + reitti);
+                continue;
+            }
             nykyisenReitinPituus += etaisyysmatriisi[kaupunki][aloitus];
+            reitti.add(aloitus);
+            System.out.println("Löytyi reitti " + reitti);
             if (nykyisenReitinPituus < lyhinReitinPituus) {
-                System.out.println("Löytyi lyhyempi reitti, jonka pituus on " + nykyisenReitinPituus);
+                lyhinReitti = new ArrayList<>();
+                for (Integer integer : reitti) {
+                    lyhinReitti.add(integer);
+                }
+                System.out.println("Löytyi lyhyempi reitti " + reitti + ", jonka pituus on " + nykyisenReitinPituus);
             }
             lyhinReitinPituus = Math.min(lyhinReitinPituus, nykyisenReitinPituus);
         }
+        System.out.println("Lyhin reitti on " + lyhinReitti + ", pituus " + lyhinReitinPituus);
         return lyhinReitinPituus;
     }
 

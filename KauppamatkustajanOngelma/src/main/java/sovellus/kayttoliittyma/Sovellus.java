@@ -32,7 +32,7 @@ public class Sovellus extends Application {
 
     ArrayList<Integer> reitti = new ArrayList<>();
     BorderPane asettelu;
-    Button ahnePainike;
+    Button lahinNaapuriPainike;
     Button arvontaPainike;
     Button brutePainike;
     Button christofidesPainike;
@@ -104,7 +104,7 @@ public class Sovellus extends Application {
         alustaLopetusPainike();
         valikko.getChildren().addAll(new Label("Kaupunkeja"), kaupunkienLkm,
                 arvontaPainike, piirraReittiJarjestyksessaPainike, brutePainike,
-                ahnePainike, christofidesPainike, //tulokset,
+                lahinNaapuriPainike, christofidesPainike, //tulokset,
                 keskeytysPainike, palautaAlkutilannePainike, nollausPainike,
                 ohjePainike, lopetusPainike);
     }
@@ -147,10 +147,15 @@ public class Sovellus extends Application {
     }
 
     private Button alustaLahinNaapuriPainike() {
-        ahnePainike = new Button("Lähin naapuri");
-        ahnePainike.setStyle("-fx-background-color: blue");
+        lahinNaapuriPainike = new Button("Lähin naapuri");
+        lahinNaapuriPainike.setStyle("-fx-background-color: blue");
+        LahinNaapuri lahinNaapuri = new LahinNaapuri();
 
-        return ahnePainike;
+        lahinNaapuriPainike.setOnAction((event) -> {
+            double nykyinenLyhinPituus = lahinNaapuri.lahinNaapuriKauppamatkustaja(etaisyysmatriisi);
+        });
+        
+        return lahinNaapuriPainike;
     }
 
     private Button alustaChristofidesPainike() {
